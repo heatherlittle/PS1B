@@ -1,39 +1,50 @@
-using Parameters, LinearAlgebra, Distributions, Random, Statistics, StatFiles, DataFrames #import the libraries we want
+using Parameters, LinearAlgebra, Distributions, Random, Statistics, StatFiles, DataFrames, Optim, PrettyTables #import the libraries we want
+#note that I don't use PrettyTables, but this is where I learn about how we can export nice looking tables in latext code
 
 include("PS1B_HLittle_model.jl") #import the functions we've written
 
-#No primitive struct
+prim = Primitives()
 
-##############################################################################################
-#initialize the data
-##############################################################################################
-#as online, load data: https://juliapackages.com/p/statfiles
-df = DataFrame(load("/Users/hlittle/Desktop/PS1B/Mortgage_performance_data.dta")) 
-mat_df = Matrix(df) #turn the data frame into a Matrix
-
-#concatenate the columns associated with noted vectors into your matrix X, we assume that the last bit is a list, not a difference
-#X = Array{Float64, 2}
-X::Array{Float64, 2} = hcat(ones(16355), mat_df[:,24], mat_df[:,25], mat_df[:,5], mat_df[:,21], mat_df[:,3], mat_df[:,7], mat_df[:,8], mat_df[:,9], mat_df[:,10], mat_df[:,14], mat_df[:,16], mat_df[:,23], mat_df[:,27], mat_df[:,28], mat_df[:,29], mat_df[:,30])
-#call the outcome variable, i_close_first_year (20th column)
-#Y = Array{Float64, 1}
-Y::Array{Float64, 1} = mat_df[:, 20]
-##############################################################################################
-
+β = zeros(17)
+β[1] = -1
 
 ##############################################################################################
 #for part 1, we'll feed in the specified beta vector to the log likelihood, score, and hessian
 ##############################################################################################
 
-#create the specified vector of beta
-β = zeros(17)
-β[1] = -1
-
 #use the functions and X and Y from the model file
-Log_Likelihood1 = Log_Like(β, X, Y)
-Score1 = Score(β, X, Y)
-Hessian1 = Hessian(β, X, Y)
+Log_Likelihood1 = Log_Like(β, prim.X, prim.Y)
+Log_Likelihood_test = Log_Like_b(β)
+Score1 = Score(β, prim.X, prim.Y)
+Hessian1 = Hessian(β, prim.X, prim.Y)
 
 
+##############################################################################################
+#for part 2, we calculate the numerical derivative
+##############################################################################################
 
+#the numerical first order derivative
+numeric_FDeriv(β, prim.X, prim.Y)
+
+numeric_SDeriv(β, prim.X, prim.Y)
+
+
+##############################################################################################
+#for part 3, solve the maximum likelihood problem using the newton algorithm
+##############################################################################################
+
+b_guess = Newton_Solve(β, prim.X, prim.Y)
+println(b_guess)
+#saving this will allow us to use it as an initial guess below!
+
+##############################################################################################
+#for part 4, use the optimization package for BFGS and Simplex (note Nelder Mead is default)
+##############################################################################################
+
+b_BFGS = optimize(Log_Like_b, b_guess, BFGS()) #note that this took 390 seconds to run the first time (I did not provide gradient)
+println("The vector that minimizes with the BFGS algorithm is ", b_BFGS.minimizer, ".")
+
+b_Simplex = optimize(Log_Like_b, b_guess) #note that the default, Nelder Mead, is the simplex method; this took 25 seconds when I ran it
+println("The vector that minimizes with the Simplex algorithm is ", b_Simplex.minimizer, ".")
 
 
